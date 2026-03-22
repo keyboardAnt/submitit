@@ -564,20 +564,23 @@ def test_lsf_through_auto(tmp_path: Path) -> None:
 # ============================================================
 
 
-def test_make_bsub_j_exclusive() -> None:
-    """Test gpu_exclusive flag generates correct -gpu directive with j_exclusive."""
-    # Without gpu_exclusive: should NOT contain j_exclusive
-    string = lsf._make_bsub_string(command="cmd", folder="/tmp", gpus_per_node=1)
-    assert '#BSUB -gpu "num=1"' in string
-    assert "j_exclusive" not in string
+def test_make_bsub_j_exclusive_always() -> None:
+    """GPU jobs always include j_exclusive=yes (WEXAC-only cluster constraint).
 
-    # With gpu_exclusive=True: should contain j_exclusive=yes
-    string = lsf._make_bsub_string(command="cmd", folder="/tmp", gpus_per_node=1, gpu_exclusive=True)
+    WEXAC's LSF does not support shared GPU allocation, so every GPU directive
+    must contain ``j_exclusive=yes`` unconditionally.
+    """
+    # Single GPU
+    string = lsf._make_bsub_string(command="cmd", folder="/tmp", gpus_per_node=1)
     assert '#BSUB -gpu "num=1:j_exclusive=yes"' in string
 
-    # With multiple GPUs and gpu_exclusive=True
-    string = lsf._make_bsub_string(command="cmd", folder="/tmp", gpus_per_node=4, gpu_exclusive=True)
+    # Multiple GPUs
+    string = lsf._make_bsub_string(command="cmd", folder="/tmp", gpus_per_node=4)
     assert '#BSUB -gpu "num=4:j_exclusive=yes"' in string
+
+    # Without GPUs — no GPU directive at all
+    string = lsf._make_bsub_string(command="cmd", folder="/tmp")
+    assert "#BSUB -gpu" not in string
 
 
 def test_parse_real_bsub_output() -> None:
