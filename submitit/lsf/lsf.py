@@ -457,7 +457,7 @@ def _bsub_time_directive(time_min: int) -> str:
 def _bsub_resource_directives(**kwargs: tp.Any) -> tp.List[str]:
     """Generate resource-related BSUB directives.
 
-    Accepts: nodes, cpus_per_task, gpus_per_node, mem, account, constraint, exclude, comment
+    Accepts: nodes, cpus_per_task, gpus_per_node, gpu_exclusive, mem, account, constraint, exclude, comment
     """
     lines: tp.List[str] = []
     nodes = kwargs.get("nodes")
@@ -467,8 +467,12 @@ def _bsub_resource_directives(**kwargs: tp.Any) -> tp.List[str]:
     if cpus_per_task is not None:
         lines.append(f"#BSUB -n {cpus_per_task}")
     gpus_per_node = kwargs.get("gpus_per_node")
+    gpu_exclusive = kwargs.get("gpu_exclusive", False)
     if gpus_per_node is not None:
-        lines.append(f'#BSUB -gpu "num={gpus_per_node}"')
+        gpu_spec = f"num={gpus_per_node}"
+        if gpu_exclusive:
+            gpu_spec += ":j_exclusive=yes"
+        lines.append(f'#BSUB -gpu "{gpu_spec}"')
     mem = kwargs.get("mem")
     if mem is not None:
         lines.append(f"#BSUB -M {mem}")
@@ -557,6 +561,7 @@ def _make_bsub_string(
     array_parallelism: int = 256,
     map_count: tp.Optional[int] = None,  # used internally
     additional_parameters: tp.Optional[tp.Dict[str, tp.Any]] = None,
+    gpu_exclusive: bool = False,
 ) -> str:
     """Creates the content of a bsub file with provided parameters.
 
@@ -613,6 +618,7 @@ def _make_bsub_string(
             nodes=nodes,
             cpus_per_task=cpus_per_task,
             gpus_per_node=gpus_per_node,
+            gpu_exclusive=gpu_exclusive,
             mem=mem,
             account=account,
             constraint=constraint,
